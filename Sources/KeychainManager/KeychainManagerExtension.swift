@@ -8,7 +8,7 @@
 import Foundation
 
 public extension KeychainManager {
-    enum ItemType: RawRepresentable {
+    enum ItemType: RawRepresentable, CaseIterable {
         public typealias RawValue = CFString
         
         case generic
@@ -91,7 +91,7 @@ public extension KeychainManager {
         }
     }
     
-    enum KeychainItemAccessLevel: RawRepresentable {
+    enum KeychainItemAccessLevel: RawRepresentable, CaseIterable {
         /// After a restart the phone must be unlocked once to access the data.
         /// Encrypted backups contain this item
         case afterFirstUnlock
@@ -112,7 +112,21 @@ public extension KeychainManager {
         /// The data is only available when the devicde is unlocked. A passcode must be set to use this option. Upon deleting the passcode the data will be deleted as well.
         /// Encrypted backups do not contain this item
         case whenPasscodeSetThisDeviceOnly
-        
+
+        public var displayName: String {
+            switch self {
+            case .afterFirstUnlock:
+                return "After First Unlock"
+            case .afterFirstUnlockThisDeviceOnly:
+                return "After First Unlock This Device Only"
+            case .whenPasscodeSetThisDeviceOnly:
+                return "When Passcode Set This Device Only"
+            case .whenUnlocked:
+                return "When Unlocked"
+            case .whenUnlockedThisDeviceOnly:
+                return "When Unlocked This Device Only"
+            }
+        }
         public var rawValue: CFString {
             switch self {
             case .afterFirstUnlock:
@@ -127,7 +141,7 @@ public extension KeychainManager {
                 return kSecAttrAccessibleWhenUnlockedThisDeviceOnly
             }
         }
-        
+
         public init?(rawValue: CFString) {
             switch rawValue {
             case kSecAttrAccessibleAfterFirstUnlock:
