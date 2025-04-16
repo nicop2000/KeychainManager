@@ -30,8 +30,7 @@ public final class KeychainManager {
         key: String,
         attributes: ItemAttributes?,
         accessLevel: KeychainItemAccessLevel?,
-        synchronize: Bool) -> KeychainDict
-    {
+        synchronize: Bool) -> KeychainDict {
         var query: KeychainDict = [
             kSecAttrService as String: serviceName as AnyObject,
             kSecAttrAccount as String: key as AnyObject,
@@ -50,7 +49,6 @@ public final class KeychainManager {
             }
         }
         query[kSecAttrSynchronizable as String] = synchronize ? kCFBooleanTrue : kCFBooleanFalse
-        print(query)
         return query
     }
 
@@ -61,42 +59,83 @@ public final class KeychainManager {
         accessLevel: KeychainItemAccessLevel = .whenUnlocked,
         synchronize: Bool = true,
         updateWhenExists: Bool = true,
-        attributes: ItemAttributes? = nil) throws
-    {
-        let data = try JSONEncoder().encode(item)
-        var query = buildQueryDict(type: type, key: key, attributes: attributes, accessLevel: accessLevel, synchronize: synchronize)
-        query[kSecValueData as String] = data
+        attributes: ItemAttributes? = nil) throws {
+            try self.saveItem(
+                item: item,
+                type: type,
+                key: key,
+                accessLevel: accessLevel,
+                synchronize: synchronize,
+                updateWhenExists: updateWhenExists,
+                attributes: attributes,
+                isRetrying: false
+            )
+        }
 
-        let result = SecItemAdd(query as CFDictionary, nil)
+    private func saveItem<T: Encodable>(
+        item: T,
+        type: ItemType,
+        key: String,
+        accessLevel: KeychainItemAccessLevel = .whenUnlocked,
+        synchronize: Bool = true,
+        updateWhenExists: Bool = true,
+        attributes: ItemAttributes? = nil,
+        isRetrying: Bool = false) throws {
+            let data = try JSONEncoder().encode(item)
+            var query = buildQueryDict(
+                type: type,
+                key: key,
+                attributes: attributes,
+                accessLevel: accessLevel,
+                synchronize: synchronize
+            )
+            query[kSecValueData as String] = data
 
-        if result != errSecSuccess {
-            let error = convertError(result)
-            if error == .duplicateItem && updateWhenExists {
-                do {
-                    try self.updateItemData(with: item, ofClass: type, key: key, accessLevel: accessLevel, attributes: attributes)
-                } catch let updateError {
-                    if (updateError as! KeychainError) == .itemNotFound {
-                        do {
+            let result = SecItemAdd(query as CFDictionary, nil)
+
+            if result != errSecSuccess {
+                let error = convertError(result)
+                if error == .duplicateItem && updateWhenExists {
+                    do {
+                        try self.updateItemData(
+                            with: item,
+                            ofClass: type,
+                            key: key,
+                            accessLevel: accessLevel,
+                            attributes: attributes
+                        )
+                    } catch let updateError {
+                        if let keychainError = updateError as? KeychainError,
+                           keychainError == .itemNotFound,
+                           !isRetrying {
+                            // Delete and retry saving one time only
                             try self.deleteItem(ofClass: type, key: key)
-                            try self.saveItem(item: item, type: type, key: key, accessLevel: accessLevel, synchronize: synchronize, attributes: attributes)
-                        } catch let deleteError {
-                            print("Error deleting item: \(deleteError)")
+                            try self.saveItem(
+                                item: item,
+                                type: type,
+                                key: key,
+                                accessLevel: accessLevel,
+                                synchronize: synchronize,
+                                updateWhenExists: updateWhenExists,
+                                attributes: attributes,
+                                isRetrying: true // prevent infinite recursion
+                            )
+                        } else {
+                            throw updateError
                         }
                     }
+                } else {
+                    throw error
                 }
-            } else {
-                throw error
             }
         }
-    }
 
     public func fetchItem<T: Decodable>(
         ofType type: ItemType,
         key: String,
         accessLevel: KeychainItemAccessLevel? = nil,
         synchronize: Bool = true,
-        attributes: ItemAttributes? = nil) throws -> T
-    {
+        attributes: ItemAttributes? = nil) throws -> T {
         var access = accessLevel ?? accessLevelFor(key: key) ?? .whenUnlocked
         var query = buildQueryDict(type: type, key: key, attributes: attributes, accessLevel: access, synchronize: synchronize)
         query[kSecReturnAttributes as String] = true
@@ -125,8 +164,7 @@ public final class KeychainManager {
         key: String,
         accessLevel: KeychainItemAccessLevel = .whenUnlocked,
         synchronize: Bool = true,
-        attributes: ItemAttributes? = nil) throws
-    {
+        attributes: ItemAttributes? = nil) throws {
         let itemData = try JSONEncoder().encode(item)
 
         let query = buildQueryDict(type: type, key: key, attributes: attributes, accessLevel: accessLevel, synchronize: synchronize)
@@ -151,7 +189,13 @@ public final class KeychainManager {
         synchronize: Bool = true,
         attributes: ItemAttributes? = nil) throws
     {
-        var query = buildQueryDict(type: type, key: key, attributes: attributes, accessLevel: accessLevel ?? accessLevelFor(key: key), synchronize: synchronize)
+        var query = buildQueryDict(
+            type: type,
+            key: key,
+            attributes: attributes,
+            accessLevel: accessLevel ?? accessLevelFor(key: key),
+            synchronize: synchronize
+        )
         let attributes = getAttributesFor(key: key)
         if let attributes {
             for (key, value) in attributes {
@@ -201,13 +245,10 @@ public final class KeychainManager {
                     let status = SecItemCopyMatching(query as CFDictionary, &results)
 
                     guard status == errSecSuccess else { continue }
-                    print("Query Dict: \(query)\n\n")
                     if let results = results as? [[String: AnyObject]] {
                         for result in results {
                             if let accountData = result[kSecAttrAccount as String] as? String {
                                 keys.insert(accountData)
-                                print("Result: \(result)")
-                                print("--------------------")
                             }
                         }
                     }
@@ -239,9 +280,6 @@ public final class KeychainManager {
                         kSecAttrAccessible as String: level.rawValue as AnyObject,
                         kSecAttrAccount as String: key
                     ]
-                    if let accessGroup {
-                        query[kSecAttrAccessGroup as String] = accessGroup
-                    }
                     if let accessGroup {
                         query[kSecAttrAccessGroup as String] = accessGroup
                     }
