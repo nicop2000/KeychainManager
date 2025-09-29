@@ -1,6 +1,6 @@
 import Foundation
 
-public enum KeychainError: Error, Equatable {
+public enum KeychainError: LocalizedError, Equatable {
     case success
     case unimplemented
     case diskFull
@@ -49,7 +49,7 @@ public enum KeychainError: Error, Equatable {
     case noSuchKeychain
     case unexpected(OSStatus)
 
-    public var localizedDescription: String {
+    public var errorDescription: String? {
         switch self {
             case .success: return "Operation successful"
             case .unimplemented: return "Function or operation not implemented"
