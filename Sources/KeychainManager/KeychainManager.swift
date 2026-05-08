@@ -7,7 +7,7 @@
 
 import Foundation
 
-public final class KeychainManager {
+public final class KeychainManager: KeychainManagerProtocol {
 
     public let serviceName: String
     public let accessGroup: String?

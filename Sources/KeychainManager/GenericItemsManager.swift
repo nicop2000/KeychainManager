@@ -1,6 +1,6 @@
 import Foundation
 
-public final class GenericItemsManager {
+public final class GenericItemsManager: GenericItemsManagerProtocol {
 
     public let serviceName: String
     public let accessGroup: String?
