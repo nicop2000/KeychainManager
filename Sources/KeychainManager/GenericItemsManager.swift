@@ -217,8 +217,12 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
     }
 
     public func deleteAllFromKeychain() throws {
-        let query = [kSecClass as String: ItemType.generic.rawValue,
-                     kSecAttrSynchronizable as String: kSecAttrSynchronizableAny]
+        var query: KeychainDict = [kSecClass as String: ItemType.generic.rawValue,
+                     kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
+                     kSecAttrService as String: serviceName as AnyObject]
+        if let accessGroup {
+            query[kSecAttrAccessGroup as String] = accessGroup
+        }
         SecItemDelete(query as CFDictionary)
     }
 
