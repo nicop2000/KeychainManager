@@ -1,4 +1,4 @@
-public class KeychainManagerMock: KeychainManagerProtocol {
+public final class KeychainManagerMock: KeychainManagerProtocol {
     public let genericItems: GenericItemsManagerMock
     
     public typealias GenericItems = GenericItemsManagerMock

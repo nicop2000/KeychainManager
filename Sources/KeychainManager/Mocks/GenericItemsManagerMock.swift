@@ -1,20 +1,26 @@
+import Foundation
 public class GenericItemsManagerMock: GenericItemsManagerProtocol {
     public let serviceName: String
     
     public let accessGroup: String?
     
-    var storedItems: [String: Codable] = [:]
+    private var storedItems: [String: Data] = [:]
 
     public func saveItem<T>(item: T, key: String, accessLevel: KeychainItemAccessLevel, synchronize: Bool, updateWhenExists: Bool, attributes: ItemAttributes?) throws where T : Encodable {
-        storedItems[key] = item as? any Codable
+        let data = try JSONEncoder().encode(item)
+        storedItems[key] = data
     }
     
     public func fetchItem<T>(key: String, accessLevel: KeychainItemAccessLevel?, attributes: ItemAttributes?) throws -> T where T : Decodable {
-        return storedItems[key] as! T
+        guard let data = storedItems[key] else {
+            throw KeychainError.itemNotFound
+        }
+        return try JSONDecoder().decode(T.self, from: data)
     }
 
     public func updateItemData<T>(with item: T, key: String, accessLevel: KeychainItemAccessLevel, synchronize: Bool, attributes: ItemAttributes?) throws where T : Encodable {
-        storedItems[key] = item as? any Codable
+        let data = try JSONEncoder().encode(item)
+        storedItems[key] = data
     }
 
     public func deleteItem(key: String, accessLevel: KeychainItemAccessLevel?, attributes: ItemAttributes?) throws {
