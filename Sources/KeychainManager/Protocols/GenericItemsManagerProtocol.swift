@@ -1,3 +1,5 @@
+import Security
+
 public protocol GenericItemsManagerProtocol {
     var serviceName: String { get }
     var accessGroup: String? { get }
@@ -6,6 +8,7 @@ public protocol GenericItemsManagerProtocol {
         item: T,
         key: String,
         accessLevel: KeychainItemAccessLevel,
+        accessControl: SecAccessControlCreateFlags?,
         synchronize: Bool,
         updateWhenExists: Bool,
         attributes: ItemAttributes?) throws
@@ -17,6 +20,7 @@ public protocol GenericItemsManagerProtocol {
         with item: T,
         key: String,
         accessLevel: KeychainItemAccessLevel,
+        accessControl: SecAccessControlCreateFlags?,
         synchronize: Bool,
         attributes: ItemAttributes?) throws
     func deleteItem(
@@ -34,7 +38,15 @@ public extension GenericItemsManagerProtocol {
         accessLevel: KeychainItemAccessLevel,
         synchronize: Bool,
         updateWhenExists: Bool) throws {
-            try saveItem(item: item, key: key, accessLevel: accessLevel, synchronize: synchronize, updateWhenExists: updateWhenExists, attributes: nil)
+            try saveItem(
+                item: item,
+                key: key,
+                accessLevel: accessLevel,
+                accessControl: nil,
+                synchronize: synchronize,
+                updateWhenExists: updateWhenExists,
+                attributes: nil
+            )
         }
 
     func fetchItem<T: Decodable>(
@@ -48,7 +60,14 @@ public extension GenericItemsManagerProtocol {
         key: String,
         accessLevel: KeychainItemAccessLevel,
         synchronize: Bool) throws {
-            try updateItemData(with: item, key: key, accessLevel: accessLevel, synchronize: synchronize, attributes: nil)
+            try updateItemData(
+                with: item,
+                key: key,
+                accessLevel: accessLevel,
+                accessControl: nil,
+                synchronize: synchronize,
+                attributes: nil
+            )
         }
     
     func deleteItem(

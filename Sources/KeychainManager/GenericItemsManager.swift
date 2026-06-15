@@ -14,6 +14,7 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
         key: String,
         attributes: ItemAttributes?,
         accessLevel: KeychainItemAccessLevel?,
+        accessControl: SecAccessControlCreateFlags? = nil,
         synchronize: Bool) -> KeychainDict {
             var query: KeychainDict = [
                 kSecAttrService as String: serviceName as AnyObject,
@@ -23,7 +24,14 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
             if let accessGroup {
                 query[kSecAttrAccessGroup as String] = accessGroup
             }
-            if let accessLevel {
+            if let accessControl {
+                let access = SecAccessControlCreateWithFlags(
+                    kCFAllocatorDefault,
+                    kSecAttrAccessibleWhenUnlocked,
+                    accessControl,
+                    nil)
+                query[kSecAttrAccessControl as String] = access
+            } else if let accessLevel {
                 query[kSecAttrAccessible as String] = accessLevel.rawValue as AnyObject
             }
 
@@ -40,6 +48,7 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
         item: T,
         key: String,
         accessLevel: KeychainItemAccessLevel = .whenUnlocked,
+        accessControl: SecAccessControlCreateFlags?,
         synchronize: Bool = true,
         updateWhenExists: Bool = true,
         attributes: ItemAttributes? = nil) throws {
@@ -47,6 +56,7 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
                 item: item,
                 key: key,
                 accessLevel: accessLevel,
+                accessControl: accessControl,
                 synchronize: synchronize,
                 updateWhenExists: updateWhenExists,
                 attributes: attributes,
@@ -58,6 +68,7 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
         item: T,
         key: String,
         accessLevel: KeychainItemAccessLevel = .whenUnlocked,
+        accessControl: SecAccessControlCreateFlags?,
         synchronize: Bool = true,
         updateWhenExists: Bool = true,
         attributes: ItemAttributes? = nil,
@@ -67,6 +78,7 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
                 key: key,
                 attributes: attributes,
                 accessLevel: accessLevel,
+                accessControl: accessControl,
                 synchronize: synchronize
             )
             query[kSecValueData as String] = data
@@ -81,6 +93,7 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
                             with: item,
                             key: key,
                             accessLevel: accessLevel,
+                            accessControl: accessControl,
                             attributes: attributes
                         )
                     } catch let updateError {
@@ -93,6 +106,7 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
                                 item: item,
                                 key: key,
                                 accessLevel: accessLevel,
+                                accessControl: accessControl,
                                 synchronize: synchronize,
                                 updateWhenExists: updateWhenExists,
                                 attributes: attributes,
@@ -113,7 +127,12 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
         accessLevel: KeychainItemAccessLevel? = nil,
         attributes: ItemAttributes? = nil) throws -> T {
             let access = accessLevel ?? accessLevelFor(key: key) ?? .whenUnlocked
-            var query = buildQueryDict(key: key, attributes: attributes, accessLevel: access, synchronize: false)
+            var query = buildQueryDict(
+                key: key,
+                attributes: attributes,
+                accessLevel: access,
+                synchronize: false
+            )
             query[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
             query[kSecReturnAttributes as String] = true
             query[kSecReturnData as String] = true
@@ -139,11 +158,18 @@ public final class GenericItemsManager: GenericItemsManagerProtocol {
         with item: T,
         key: String,
         accessLevel: KeychainItemAccessLevel = .whenUnlocked,
+        accessControl: SecAccessControlCreateFlags?,
         synchronize: Bool = true,
         attributes: ItemAttributes? = nil) throws {
             let itemData = try JSONEncoder().encode(item)
 
-            let query = buildQueryDict(key: key, attributes: attributes, accessLevel: accessLevel, synchronize: synchronize)
+            let query = buildQueryDict(
+                key: key,
+                attributes: attributes,
+                accessLevel: accessLevel,
+                accessControl: accessControl,
+                synchronize: synchronize
+            )
 
             let attributesToUpdate: KeychainDict = [
                 kSecValueData as String: itemData as AnyObject,
